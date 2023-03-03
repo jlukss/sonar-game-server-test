@@ -4,10 +4,11 @@
     "description": "A simple Node.js application that receives a UDP data stream and broadcasts it to multiple subscribers using the UDP protocol.",
     "main": "index.js",
     "dependencies": {
+        "uuid": "^9.0.0"
     },
     "scripts": {
-      "start": "node app.js"
+        "start": "node app.js"
     },
     "author": "",
     "license": "ISC"
-  }
+}
