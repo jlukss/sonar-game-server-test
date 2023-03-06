@@ -39,9 +39,9 @@ const addDiskState = (playerId, gameTick, diskState) => {
         authorityHistory[gameTick] = playerId;
         diskState.simulated = false;
 
-        if (diskStates.keys().length == global.gameTicksToKeep)
+        if (Object.keys(diskStates).length == global.gameTicksToKeep)
         {
-            const sortedKeys = diskStates.keys().sort((a, b) => a - b);
+            const sortedKeys = Object.keys(diskStates).sort((a, b) => a - b);
             delete diskStates[sortedKeys[0]];
         }
 
@@ -54,9 +54,9 @@ const addDiskState = (playerId, gameTick, diskState) => {
             gameTick: diskState
         }
     } else {
-        if (playerDiskStates[playerId].keys().length == global.gameTicksToKeep)
+        if (Object.keys(playerDiskStates[playerId]).length == global.gameTicksToKeep)
         {
-            const sortedKeys = playerDiskStates[playerId].keys().sort((a, b) => a - b);
+            const sortedKeys = Object.keys(playerDiskStates[playerId]).sort((a, b) => a - b);
             delete playerDiskStates[playerId][sortedKeys[0]];
         }
         playerDiskStates[playerId][gameTick] = diskState;
@@ -69,7 +69,7 @@ const changeDiskAuthority = (gameTick, playerId) => {
 }
 
 const getDiskStatesFrom = (fromGameTick) => {
-    const sortedKeys = diskStates.keys().sort((a, b) => a - b);
+    const sortedKeys = Object.keys(diskStates).sort((a, b) => a - b);
     let result = {};
 
     sortedKeys.forEach(gameTick => {

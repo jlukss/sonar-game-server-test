@@ -12,13 +12,13 @@ const addPlayerState = (playerId, gameTick, state) => {
             }
         }
     } else {
-        if (playerInputs[playerId].gameStates.keys().length == global.gameTicksToKeep) 
+        if (Object.keys(playerInputs[playerId].gameStates).length == global.gameTicksToKeep) 
         {
-            const sortedKeys = playerInputs[playerId].gameStates.keys().sort((a, b) => a - b);
+            const sortedKeys = Object.keys(playerInputs[playerId].gameStates).sort((a, b) => a - b);
             delete playerInputs[playerId].gameStates[sortedKeys[0]];
         }
 
-        playerInputs[playerId].gameState[gameTick] = state;
+        playerInputs[playerId].gameStates[gameTick] = state;
         playerInputs[playerId].lastReceivedTick = gameTick;
     }
 }

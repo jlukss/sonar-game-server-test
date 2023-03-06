@@ -17,8 +17,12 @@ setInterval(() => {
   
     const compressedMessage = zlib.gzipSync(messageString);
 
-    server.send(compressedMessage, subscriber.port, subscriber.address);
-    console.log(`Sent message to ${subscriber.address}:${subscriber.port}`);
+    const messageLength = Buffer.alloc(4);
+    messageLength.writeUInt32LE(messageString.length);
+    const fullMessage = Buffer.concat([messageLength, compressedMessage]);
+
+    server.send(fullMessage, subscriber.port, subscriber.address);
+    //console.log(`Sent message ${messageString.length}:${compressedMessage.byteLength} to ${subscriber.address}:${subscriber.port}`);
   });
 }, 1000 / global.physicsFrameRate);
 
@@ -31,7 +35,7 @@ server.on('message', (message, rinfo) => {
     
     addSubscriber(playerId, rinfo.address, rinfo.port);
   } else if (message.toString().startsWith('DISCONNECT')) {
-    playerId = message.toString().substring(7);
+    playerId = message.toString().substring(10);
     // match = matches.getMatchByPlayer(playerId);
     
     removeSubscriber(playerId, rinfo.address, rinfo.port);
@@ -42,7 +46,7 @@ server.on('message', (message, rinfo) => {
         return;
       }
 
-      console.log(`Received message: ${uncompressedMsg} from ${rinfo.address}:${rinfo.port}`);
+      //console.log(`Received message: ${uncompressedMsg} from ${rinfo.address}:${rinfo.port}`);
 
       const data = JSON.parse(uncompressedMsg);
       
@@ -60,6 +64,17 @@ server.bind(1234);
 
 // Function to add a subscriber to the list of subscribers
 const addSubscriber = (playerId, address, port) => {
+  for (let i = 0; i < subscribers.length; i++) {
+    if (
+        (subscribers[i].playerId === playerId) && 
+        (subscribers[i].address === address) && 
+        (subscribers[i].port === port)
+      ) 
+      {
+        console.log('Subscriber already in list');
+        return;
+      }
+    }
   console.log(`New subscriber: ${playerId} - ${address}:${port}`);
   subscribers.push({ playerId, address, port });
 };
@@ -67,7 +82,7 @@ const addSubscriber = (playerId, address, port) => {
 const removeSubscriber = (playerId, address, port) => {
   for (let i = 0; i < subscribers.length; i++) {
     if (
-      (subscribers[i].playerId === playerId) && 
+        (subscribers[i].playerId === playerId) && 
         (subscribers[i].address === address) && 
         (subscribers[i].port === port)
       ) 
@@ -77,17 +92,17 @@ const removeSubscriber = (playerId, address, port) => {
       return;
     }
   }
-  console.log(`Subscriber with: ${address}:${port} not found`);
+  console.log(`Subscriber with: ${playerId} - ${address}:${port} not found`);
 }
 
 const processMessage = (data) => {
   let hrTime = process.hrtime.bigint();
-  let serverTime = hrTime / 1000;
+  let serverTime = Number(hrTime / BigInt(1000));
 
   let serverPing = serverTime - data.serverTime;
 
   data.gameStatesHistory.forEach(gameState => {
-    gameState.playerStates.keys().forEach(playerId => {
+    Object.keys(gameState.playerStates).forEach(playerId => {
       playerInputs.setPlayerLastClientTime(playerId, data.clientTime);
 
       disk.addDiskState(playerId, gameState.gameTimeTick, gameState.diskState);
@@ -101,7 +116,7 @@ const processMessage = (data) => {
 
 const createServerMessage = (playerId) => {
   let hrTime = process.hrtime.bigint();
-  let serverTime = hrTime / 1000;
+  let serverTime = Number(hrTime / BigInt(1000));
   let gameTicksFrom = playerInputs.getPlayerLastInputGameTick(playerId);
   
   const diskStates = disk.getDiskStatesFrom(gameTicksFrom);
@@ -126,9 +141,9 @@ const createServerMessage = (playerId) => {
       }
       
       let gameState = {
-          "gameTimeTick": gameTick,
-          "playerStates": playerStates,
-          "diskState": diskState
+          "GameTimeTick": gameTick,
+          "PlayerStates": playerStates,
+          "DiskState": diskState
         };
 
       gameStatesHistory.push(gameState);
@@ -136,8 +151,8 @@ const createServerMessage = (playerId) => {
   }
 
   return {
-    "serverTime": serverTime,
-    "clientTime": playerInputs.getPlayerLastClientTime(playerId),
-    "gameStatesHistory": gameStatesHistory
+    "ServerTime": serverTime,
+    "ClientTime": playerInputs.getPlayerLastClientTime(playerId),
+    "GameStatesHistory": gameStatesHistory
   };
 }
