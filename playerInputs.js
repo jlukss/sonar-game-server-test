@@ -37,7 +37,7 @@ const getPlayerStatesFrom = (fromGameTick) => {
     for (const playerId in playerInputs) {
         if (Object.hasOwnProperty.call(playerInputs, playerId)) {
             for (const gameTick in playerInputs[playerId].gameStates) {
-                if (Object.hasOwnProperty.call(playerInputs[playerId].gameStates, gameTick)) {
+                if ((gameTick >= fromGameTick) && (Object.hasOwnProperty.call(playerInputs[playerId].gameStates, gameTick))) {
                     const state = playerInputs[playerId].gameStates[gameTick];
                     if (!result.hasOwnProperty(gameTick)) {
                         result[gameTick] = {
