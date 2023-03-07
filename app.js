@@ -9,7 +9,14 @@ const subscribers = [];
 
 global.physicsFrameRate = 72;
 global.gameTicksToKeep = 120;
+let totalSentBytes = 0;
 
+setInterval(() => {
+  const bytesPerSecond = totalSentBytes;
+  totalSentBytes = 0;
+  const mbps = bytesPerSecond * 8 / 1000000;
+  process.stdout.write(`Sent ${bytesPerSecond} bytes/s (${mbps.toFixed(2)} Mbps)   \r`);
+}, 1000);
 
 setInterval(() => {
   subscribers.forEach((subscriber) => {
@@ -22,6 +29,7 @@ setInterval(() => {
     const fullMessage = Buffer.concat([messageLength, compressedMessage]);
 
     server.send(fullMessage, subscriber.port, subscriber.address);
+    totalSentBytes+=fullMessage.length;
     //console.log(`Sent message ${messageString.length}:${compressedMessage.byteLength} to ${subscriber.address}:${subscriber.port}`);
   });
 }, 1000 / global.physicsFrameRate);
@@ -30,12 +38,12 @@ setInterval(() => {
 server.on('message', (message, rinfo) => {
 
   if (message.toString().startsWith('CONNECT')) {
-    playerId = message.toString().substring(7);
+    playerId = message.toString().substring(7, message.length - 1);
     // match = matches.getMatchByPlayer(playerId);
     
     addSubscriber(playerId, rinfo.address, rinfo.port);
   } else if (message.toString().startsWith('DISCONNECT')) {
-    playerId = message.toString().substring(10);
+    playerId = message.toString().substring(10, message.length - 1);
     // match = matches.getMatchByPlayer(playerId);
     
     removeSubscriber(playerId, rinfo.address, rinfo.port);
@@ -99,7 +107,7 @@ const processMessage = (data) => {
   let hrTime = process.hrtime.bigint();
   let serverTime = Number(hrTime / BigInt(1000));
 
-  let serverPing = serverTime - data.serverTime;
+  let serverPing = serverTime - Number(data.serverTime);
 
   data.gameStatesHistory.forEach(gameState => {
     Object.keys(gameState.playerStates).forEach(playerId => {
@@ -142,7 +150,7 @@ const createServerMessage = (playerId) => {
       
       let gameState = {
           "GameTimeTick": gameTick,
-          "PlayerStates": playerStates,
+          "PlayersStates": playerStates,
           "DiskState": diskState
         };
 

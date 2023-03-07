@@ -73,7 +73,7 @@ const getDiskStatesFrom = (fromGameTick) => {
     let result = {};
 
     sortedKeys.forEach(gameTick => {
-        if (gameTick > fromGameTick) {
+        if (gameTick >= fromGameTick) {
             result[gameTick] = diskStates[gameTick];
         }
     });

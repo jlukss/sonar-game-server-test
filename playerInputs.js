@@ -8,7 +8,7 @@ const addPlayerState = (playerId, gameTick, state) => {
         playerInputs[playerId] = {
             lastReceivedTick: gameTick,
             gameStates: {
-                gameTick: state
+                [gameTick]: state
             }
         }
     } else {
@@ -41,7 +41,7 @@ const getPlayerStatesFrom = (fromGameTick) => {
                     const state = playerInputs[playerId].gameStates[gameTick];
                     if (!result.hasOwnProperty(gameTick)) {
                         result[gameTick] = {
-                            playerId: state
+                            [playerId]: state
                         }
                     } else {
                         result[gameTick][playerId] = state;
