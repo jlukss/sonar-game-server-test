@@ -10,12 +10,16 @@ const subscribers = [];
 global.physicsFrameRate = 72;
 global.gameTicksToKeep = 120;
 let totalSentBytes = 0;
+let totalReceivedBytes = 0;
 
 setInterval(() => {
-  const bytesPerSecond = totalSentBytes;
+  const bytesPerSecondSent = totalSentBytes;
+  const bytesPerSecondReceived = totalReceivedBytes;
   totalSentBytes = 0;
-  const mbps = bytesPerSecond * 8 / 1000000;
-  process.stdout.write(`Sent ${bytesPerSecond} bytes/s (${mbps.toFixed(2)} Mbps)   \r`);
+  totalReceivedBytes = 0;
+  const mbpsSent = bytesPerSecondSent * 8 / 1000000;
+  const mbpsRecv = bytesPerSecondReceived * 8 / 1000000;
+  process.stdout.write(`Sent ${bytesPerSecondSent} bytes/s (${mbpsSent.toFixed(2)} Mbps). Received ${bytesPerSecondReceived} bytes/s (${mbpsRecv.toFixed(2)} Mbps)  \r`);
 }, 1000);
 
 setInterval(() => {
@@ -36,7 +40,6 @@ setInterval(() => {
 
 
 server.on('message', (message, rinfo) => {
-
   if (message.toString().startsWith('CONNECT')) {
     playerId = message.toString().substring(7, message.length - 1);
     // match = matches.getMatchByPlayer(playerId);
@@ -49,6 +52,8 @@ server.on('message', (message, rinfo) => {
     removeSubscriber(playerId, rinfo.address, rinfo.port);
     playerInputs.removePlayer(playerId);
   } else {  
+    totalReceivedBytes+=message.length;
+
     zlib.gunzip(message, (err, uncompressedMsg) => {
       if (err) {
         console.error(err);
@@ -85,7 +90,8 @@ const addSubscriber = (playerId, address, port) => {
       }
     }
   console.log(`New subscriber: ${playerId} - ${address}:${port}`);
-  subscribers.push({ playerId, address, port });
+  messgesReceived = 1;
+  subscribers.push({ playerId, address, port, messgesReceived });
 };
 
 const removeSubscriber = (playerId, address, port) => {
