@@ -5,7 +5,7 @@ const server = dgram.createSocket('udp4');
 const disk = require('./disk.js');
 const playerInputs = require('./playerInputs.js');
 
-const subscribers = [];
+const subscribers = new Map();
 
 global.physicsFrameRate = 72;
 global.gameTicksToKeep = 120;
@@ -23,8 +23,8 @@ setInterval(() => {
 }, 1000);
 
 setInterval(() => {
-  subscribers.forEach((subscriber) => {
-    const messageString = JSON.stringify(createServerMessage(subscriber.playerId));
+  subscribers.forEach((playerId, subscriber) => {
+    const messageString = JSON.stringify(createServerMessage(playerId));
   
     const compressedMessage = zlib.gzipSync(messageString, {level: 1});
 
@@ -38,6 +38,18 @@ setInterval(() => {
   });
 }, 1000 / global.physicsFrameRate);
 
+
+setInterval(() => {
+  subscribers.forEach((playerId, subscriber) => {
+    if (subscriber.messgesReceived == 0) {
+      removeSubscriber(playerId, subscriber.address, subscriber.port);
+      playerInputs.removePlayer(playerId);
+      console.log(`Subscriber timed out:  ${playerId} - ${subscriber.address}:${subscriber.port}`);
+    } else {
+      subscriber.messgesReceived = 0;
+    }
+  });
+}, 5000);
 
 server.on('message', (message, rinfo) => {
   if (message.toString().startsWith('CONNECT')) {
@@ -78,34 +90,23 @@ server.bind(1234);
 
 // Function to add a subscriber to the list of subscribers
 const addSubscriber = (playerId, address, port) => {
-  for (let i = 0; i < subscribers.length; i++) {
-    if (
-        (subscribers[i].playerId === playerId) && 
-        (subscribers[i].address === address) && 
-        (subscribers[i].port === port)
-      ) 
-      {
-        console.log('Subscriber already in list');
-        return;
-      }
-    }
+  if (subscribers.has(playerId)) 
+  {
+    console.log('Subscriber already in list');
+    return;
+  }
+
   console.log(`New subscriber: ${playerId} - ${address}:${port}`);
   messgesReceived = 1;
-  subscribers.push({ playerId, address, port, messgesReceived });
+  subscribers.set(playerId, { address, port, messgesReceived });
 };
 
 const removeSubscriber = (playerId, address, port) => {
-  for (let i = 0; i < subscribers.length; i++) {
-    if (
-        (subscribers[i].playerId === playerId) && 
-        (subscribers[i].address === address) && 
-        (subscribers[i].port === port)
-      ) 
-      {
-      subscribers.splice(i, 1);
-      console.log(`Subscriber disconnected:  ${playerId} - ${address}:${port}`);
-      return;
-    }
+  if (subscribers.has(playerId)) 
+  {
+    subscribers.delete(playerId);
+    console.log(`Subscriber disconnected:  ${playerId} - ${address}:${port}`);
+    return;
   }
   console.log(`Subscriber with: ${playerId} - ${address}:${port} not found`);
 }
@@ -115,13 +116,15 @@ const processMessage = (data) => {
   let serverTime = Number(hrTime / BigInt(1000000));
 
   let serverPing = serverTime - Number(data.serverTime);
+  let playerId = data.Source;
+
+  playerInputs.setPlayerLastClientTime(playerId, data.clientTime, serverTime);
+  subscribers.get(playerId).messgesReceived++;
 
   data.gameStatesHistory.forEach(gameState => {
+    disk.addDiskState(playerId, gameState.gameTimeTick, gameState.diskState);
+
     Object.keys(gameState.playerStates).forEach(playerId => {
-      playerInputs.setPlayerLastClientTime(playerId, data.clientTime, serverTime);
-
-      disk.addDiskState(playerId, gameState.gameTimeTick, gameState.diskState);
-
       let playerState = gameState.playerStates[playerId];
       playerState.playerPing = serverPing;
       playerInputs.addPlayerState(playerId, gameState.gameTimeTick, playerState);
