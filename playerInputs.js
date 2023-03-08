@@ -55,18 +55,30 @@ const getPlayerStatesFrom = (fromGameTick) => {
     return result;
 }
 
-const setPlayerLastClientTime = (playerId, clientTime) => {
+const setPlayerLastClientTime = (playerId, clientTime, messageTime) => {
     if (!lastClientTime.hasOwnProperty(playerId) || lastClientTime[playerId] < clientTime) {
-        lastClientTime[playerId] = clientTime;
+        lastClientTime[playerId] = [clientTime, messageTime];
     }
 }
 
-const getPlayerLastClientTime = (playerId) => {
+const getPlayerLastClientTime = (playerId,serverTime) => {
     if (lastClientTime.hasOwnProperty(playerId)) {
-        return lastClientTime[playerId];
+        let clientTime = lastClientTime[playerId][0];
+        let timeInBuffer = serverTime - lastClientTime[playerId][1];
+        return clientTime + timeInBuffer;
     }
 
     return 0;
+}
+
+const removePlayer = (playerId) => {
+    if (playerInputs.hasOwnProperty(playerId)) {
+        delete playerInputs[playerId];
+    }
+
+    if (lastClientTime.hasOwnProperty(playerId)) {
+        delete lastClientTime[playerId];
+    }
 }
 
 module.exports = {
@@ -74,5 +86,6 @@ module.exports = {
     getPlayerLastInputGameTick,
     getPlayerStatesFrom,
     setPlayerLastClientTime,
-    getPlayerLastClientTime
+    getPlayerLastClientTime,
+    removePlayer
 };

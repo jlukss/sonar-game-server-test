@@ -22,7 +22,7 @@ setInterval(() => {
   subscribers.forEach((subscriber) => {
     const messageString = JSON.stringify(createServerMessage(subscriber.playerId));
   
-    const compressedMessage = zlib.gzipSync(messageString);
+    const compressedMessage = zlib.gzipSync(messageString, {level: 1});
 
     const messageLength = Buffer.alloc(4);
     messageLength.writeUInt32LE(messageString.length);
@@ -47,6 +47,7 @@ server.on('message', (message, rinfo) => {
     // match = matches.getMatchByPlayer(playerId);
     
     removeSubscriber(playerId, rinfo.address, rinfo.port);
+    playerInputs.removePlayer(playerId);
   } else {  
     zlib.gunzip(message, (err, uncompressedMsg) => {
       if (err) {
@@ -105,13 +106,13 @@ const removeSubscriber = (playerId, address, port) => {
 
 const processMessage = (data) => {
   let hrTime = process.hrtime.bigint();
-  let serverTime = Number(hrTime / BigInt(1000));
+  let serverTime = Number(hrTime / BigInt(1000000));
 
   let serverPing = serverTime - Number(data.serverTime);
 
   data.gameStatesHistory.forEach(gameState => {
     Object.keys(gameState.playerStates).forEach(playerId => {
-      playerInputs.setPlayerLastClientTime(playerId, data.clientTime);
+      playerInputs.setPlayerLastClientTime(playerId, data.clientTime, serverTime);
 
       disk.addDiskState(playerId, gameState.gameTimeTick, gameState.diskState);
 
@@ -124,7 +125,7 @@ const processMessage = (data) => {
 
 const createServerMessage = (playerId) => {
   let hrTime = process.hrtime.bigint();
-  let serverTime = Number(hrTime / BigInt(1000));
+  let serverTime = Number(hrTime / BigInt(1000000));
   let gameTicksFrom = playerInputs.getPlayerLastInputGameTick(playerId);
   
   const diskStates = disk.getDiskStatesFrom(gameTicksFrom);
@@ -160,7 +161,7 @@ const createServerMessage = (playerId) => {
 
   return {
     "ServerTime": serverTime,
-    "ClientTime": playerInputs.getPlayerLastClientTime(playerId),
+    "ClientTime": playerInputs.getPlayerLastClientTime(playerId, serverTime),
     "GameStatesHistory": gameStatesHistory
   };
 }
