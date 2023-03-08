@@ -112,6 +112,8 @@ const removeSubscriber = (playerId, address, port) => {
 }
 
 const processMessage = (data) => {
+  let playerId = data.source;
+
   if (!subscribers.has(playerId)) {
     return;
   }
@@ -122,7 +124,6 @@ const processMessage = (data) => {
   let serverTime = Number(hrTime / BigInt(1000000));
 
   let serverPing = serverTime - Number(data.serverTime);
-  let playerId = data.source;
 
   playerInputs.setPlayerLastClientTime(playerId, data.clientTime, serverTime);
 
