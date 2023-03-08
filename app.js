@@ -23,7 +23,7 @@ setInterval(() => {
 }, 1000);
 
 setInterval(() => {
-  subscribers.forEach((playerId, subscriber) => {
+  subscribers.forEach((subscriber, playerId) => {
     const messageString = JSON.stringify(createServerMessage(playerId));
   
     const compressedMessage = zlib.gzipSync(messageString, {level: 1});
@@ -40,7 +40,7 @@ setInterval(() => {
 
 
 setInterval(() => {
-  subscribers.forEach((playerId, subscriber) => {
+  subscribers.forEach((subscriber, playerId) => {
     if (subscriber.messgesReceived == 0) {
       removeSubscriber(playerId, subscriber.address, subscriber.port);
       playerInputs.removePlayer(playerId);
@@ -112,14 +112,19 @@ const removeSubscriber = (playerId, address, port) => {
 }
 
 const processMessage = (data) => {
+  if (!subscribers.has(playerId)) {
+    return;
+  }
+
+  subscribers.get(playerId).messgesReceived++;
+
   let hrTime = process.hrtime.bigint();
   let serverTime = Number(hrTime / BigInt(1000000));
 
   let serverPing = serverTime - Number(data.serverTime);
-  let playerId = data.Source;
+  let playerId = data.source;
 
   playerInputs.setPlayerLastClientTime(playerId, data.clientTime, serverTime);
-  subscribers.get(playerId).messgesReceived++;
 
   data.gameStatesHistory.forEach(gameState => {
     disk.addDiskState(playerId, gameState.gameTimeTick, gameState.diskState);
