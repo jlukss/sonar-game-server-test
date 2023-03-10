@@ -6,7 +6,7 @@ const addPlayerState = (playerId, gameTick, state) => {
     if(!playerInputs.hasOwnProperty(playerId))
     {
         playerInputs[playerId] = {
-            lastReceivedTick: gameTick,
+            lastReceivedTick: 0,
             gameStates: {
                 [gameTick]: state
             }
@@ -19,6 +19,11 @@ const addPlayerState = (playerId, gameTick, state) => {
         }
 
         playerInputs[playerId].gameStates[gameTick] = state;
+    }
+}
+
+const setPlayerLastInputGameTick = (playerId, gameTick) => {
+    if (playerInputs[playerId].lastReceivedTick < gameTick) {
         playerInputs[playerId].lastReceivedTick = gameTick;
     }
 }
@@ -83,6 +88,7 @@ const removePlayer = (playerId) => {
 
 module.exports = {
     addPlayerState,
+    setPlayerLastInputGameTick,
     getPlayerLastInputGameTick,
     getPlayerStatesFrom,
     setPlayerLastClientTime,

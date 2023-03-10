@@ -6,6 +6,7 @@ const disk = require('./disk.js');
 const playerInputs = require('./playerInputs.js');
 
 const subscribers = new Map();
+const messageSegments = {};
 
 global.physicsFrameRate = 72;
 global.gameTicksToKeep = 120;
@@ -23,8 +24,8 @@ setInterval(() => {
 }, 1000);
 
 setInterval(() => {
-  subscribers.forEach((subscriber, playerId) => {
-    const messageString = JSON.stringify(createServerMessage(playerId));
+  subscribers.forEach((subscriber, subscriberId) => {
+    const messageString = JSON.stringify(createServerMessage(subscriber.playerId));
   
     const compressedMessage = zlib.gzipSync(messageString, {level: 1});
 
@@ -40,13 +41,13 @@ setInterval(() => {
 
 
 setInterval(() => {
-  subscribers.forEach((subscriber, playerId) => {
-    if (subscriber.messgesReceived == 0) {
-      removeSubscriber(playerId, subscriber.address, subscriber.port);
-      playerInputs.removePlayer(playerId);
-      console.log(`Subscriber timed out:  ${playerId} - ${subscriber.address}:${subscriber.port}`);
+  subscribers.forEach((subscriber, subscriberId) => {
+    if (subscriber.messagesReceived == 0) {
+      removeSubscriber(subscriberId, subscriber.address, subscriber.port);
+      playerInputs.removePlayer(subscriber.playerId);
+      console.log(`Subscriber timed out:  ${subscriber.playerId} - ${subscriber.address}:${subscriber.port}`);
     } else {
-      subscriber.messgesReceived = 0;
+      subscriber.messagesReceived = 0;
     }
   });
 }, 5000);
@@ -66,18 +67,57 @@ server.on('message', (message, rinfo) => {
   } else {  
     totalReceivedBytes+=message.length;
 
-    zlib.gunzip(message, (err, uncompressedMsg) => {
-      if (err) {
-        console.error(err);
-        return;
-      }
+    const subscriberId = rinfo.address+':'+rinfo.port;
 
-      //console.log(`Received message: ${uncompressedMsg} from ${rinfo.address}:${rinfo.port}`);
+    if (!subscribers.has(subscriberId)) {
+      return;
+    }
 
-      const data = JSON.parse(uncompressedMsg);
-      
-      processMessage(data);
-    });
+    const messageId = message.readInt32LE(0);
+    const seqNum = message.readInt32LE(4);
+    const totalSegments = message.readInt32LE(8);
+
+    const msgPart = message.subarray(12);
+
+    subscribers.get(subscriberId).messagesReceived++;
+
+    if(!messageSegments.hasOwnProperty(subscriberId+':'+messageId)) {
+      messageSegments[subscriberId+':'+messageId] = {};
+    }
+    messageSegments[subscriberId+':'+messageId][seqNum] = msgPart;
+
+    if (Object.keys(messageSegments[subscriberId+':'+messageId]).length === totalSegments) {
+      let combinedMessage = Buffer.concat(
+        Object.keys(messageSegments[subscriberId+':'+messageId])
+        .sort((a,b) => parseInt(a) - parseInt(b))
+        .map(key => messageSegments[subscriberId+':'+messageId][key]));
+
+      delete messageSegments[subscriberId+':'+messageId];
+
+      // Delete old messages
+      Object.keys(messageSegments).filter((key) => {
+        let parts = key.split(':');
+        if (((parts[0]+':'+parts[1]) == subscriberId) && (parseInt(parts[2]) < messageId)) {
+          return true;
+        }
+        return false;
+      }).forEach((key) => {
+        delete messageSegments[key];
+      });
+
+      zlib.gunzip(combinedMessage, (err, uncompressedMsg) => {
+        if (err) {
+          console.error(err);
+          return;
+        }
+
+        //console.log(`Received message: ${uncompressedMsg} from ${rinfo.address}:${rinfo.port}`);
+
+        const data = JSON.parse(uncompressedMsg);
+        
+        processMessage(data);
+      });
+    }
   }
 });
 
@@ -90,21 +130,24 @@ server.bind(1234);
 
 // Function to add a subscriber to the list of subscribers
 const addSubscriber = (playerId, address, port) => {
-  if (subscribers.has(playerId)) 
+  let subscriberId = address+':'+port;
+
+  if (subscribers.has(subscriberId)) 
   {
     console.log('Subscriber already in list');
     return;
   }
 
   console.log(`New subscriber: ${playerId} - ${address}:${port}`);
-  messgesReceived = 1;
-  subscribers.set(playerId, { address, port, messgesReceived });
+  messagesReceived = 1;
+  subscribers.set(subscriberId, { playerId, address, port, messagesReceived });
 };
 
 const removeSubscriber = (playerId, address, port) => {
-  if (subscribers.has(playerId)) 
+  let subscriberId = address+':'+port;
+  if (subscribers.has(subscriberId)) 
   {
-    subscribers.delete(playerId);
+    subscribers.delete(subscriberId);
     console.log(`Subscriber disconnected:  ${playerId} - ${address}:${port}`);
     return;
   }
@@ -113,12 +156,6 @@ const removeSubscriber = (playerId, address, port) => {
 
 const processMessage = (data) => {
   let playerId = data.source;
-
-  if (!subscribers.has(playerId)) {
-    return;
-  }
-
-  subscribers.get(playerId).messgesReceived++;
 
   let hrTime = process.hrtime.bigint();
   let serverTime = Number(hrTime / BigInt(1000000));
@@ -135,6 +172,10 @@ const processMessage = (data) => {
       playerState.playerPing = serverPing;
       playerInputs.addPlayerState(playerId, gameState.gameTimeTick, playerState);
     });
+
+    if (gameState.diskState.simulated == false) {
+      playerInputs.setPlayerLastInputGameTick(playerId, gameState.gameTimeTick);
+    }
   });
 }
 
