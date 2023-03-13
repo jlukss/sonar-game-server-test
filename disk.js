@@ -1,6 +1,6 @@
 let diskStates = {
     0: {
-        "simulated": false,
+        "bSimulated": false,
         "velocity":{
             "x":0.0000000000000000,
             "y":0.0000000000000000,
@@ -26,18 +26,19 @@ let diskStates = {
 };
 let playerDiskStates = {};
 let authorityHistory = {};
+let authorityAheadOfServerTicks = 0;
 let currentAuthorativePlayer = "";
 
-const addDiskState = (playerId, gameTick, diskState) => {
+const addDiskState = (playerId, gameTick, diskState, estimatedAhead) => {
     if(currentAuthorativePlayer == "") 
     {
-        changeDiskAuthority(gameTick, playerId);
+        changeDiskAuthority(gameTick, playerId, estimatedAhead);
     }
-    diskState.simulated = true;
+    diskState.bSimulated = true;
 
     if (currentAuthorativePlayer == playerId) {        
         authorityHistory[gameTick] = playerId;
-        diskState.simulated = false;
+        diskState.bSimulated = false;
 
         if (Object.keys(diskStates).length == global.gameTicksToKeep)
         {
@@ -62,10 +63,16 @@ const addDiskState = (playerId, gameTick, diskState) => {
         playerDiskStates[playerId][gameTick] = diskState;
     }
 }
+const removeAuthority = (playerId) => {
+    if (playerId == currentAuthorativePlayer) {
+        currentAuthorativePlayer = "";
+    }
+}
 
-const changeDiskAuthority = (gameTick, playerId) => {
+const changeDiskAuthority = (gameTick, playerId, estimatedAhead) => {
     authorityHistory[gameTick] = currentAuthorativePlayer;
     currentAuthorativePlayer = playerId;
+    authorityAheadOfServerTicks = estimatedAhead;
 }
 
 const getDiskStatesFrom = (fromGameTick) => {
@@ -81,8 +88,14 @@ const getDiskStatesFrom = (fromGameTick) => {
     return result;
 }
 
+const getEstimatedGameTime = (latestReceivedTick) => {
+    return latestReceivedTick + authorityAheadOfServerTicks;
+}
+
 module.exports = {
     addDiskState,
     changeDiskAuthority,
-    getDiskStatesFrom
+    removeAuthority,
+    getDiskStatesFrom,
+    getEstimatedGameTime
 }

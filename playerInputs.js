@@ -2,7 +2,7 @@ let playerInputs = {};
 let lastClientTime = {};
 
 const addPlayerState = (playerId, gameTick, state) => {
-    state.simulated = false;
+    state.bSimulated = false;
     if(!playerInputs.hasOwnProperty(playerId))
     {
         playerInputs[playerId] = {
@@ -60,19 +60,26 @@ const getPlayerStatesFrom = (fromGameTick) => {
     return result;
 }
 
-const setPlayerLastClientTime = (playerId, clientTime, messageTime) => {
+const setPlayerLastClientTime = (playerId, clientTime, messageTime, ticksAhead) => {
     if (!lastClientTime.hasOwnProperty(playerId) || lastClientTime[playerId] < clientTime) {
-        lastClientTime[playerId] = [clientTime, messageTime];
+        lastClientTime[playerId] = [clientTime, messageTime, ticksAhead];
     }
 }
 
-const getPlayerLastClientTime = (playerId,serverTime) => {
+const getPlayerLastClientTime = (playerId, serverTime) => {
     if (lastClientTime.hasOwnProperty(playerId)) {
         let clientTime = lastClientTime[playerId][0];
         let timeInBuffer = serverTime - lastClientTime[playerId][1];
         return clientTime + timeInBuffer;
     }
 
+    return 0;
+}
+
+const getEstimatedTicksAhead = (playerId) => {
+    if (lastClientTime.hasOwnProperty(playerId)) {
+        return lastClientTime[playerId][2];
+    }
     return 0;
 }
 
@@ -90,6 +97,7 @@ module.exports = {
     addPlayerState,
     setPlayerLastInputGameTick,
     getPlayerLastInputGameTick,
+    getEstimatedTicksAhead,
     getPlayerStatesFrom,
     setPlayerLastClientTime,
     getPlayerLastClientTime,

@@ -9,18 +9,22 @@ const subscribers = new Map();
 const messageSegments = {};
 
 global.physicsFrameRate = 72;
-global.gameTicksToKeep = 120;
+global.gameTicksToKeep = 72;
 let totalSentBytes = 0;
 let totalReceivedBytes = 0;
+let lastReceivedTick = 0;
+let startingTick = 0;
 
 setInterval(() => {
   const bytesPerSecondSent = totalSentBytes;
   const bytesPerSecondReceived = totalReceivedBytes;
+  const ticksPerSecond = lastReceivedTick - startingTick;
   totalSentBytes = 0;
   totalReceivedBytes = 0;
+  startingTick = lastReceivedTick;
   const mbpsSent = bytesPerSecondSent * 8 / 1000000;
   const mbpsRecv = bytesPerSecondReceived * 8 / 1000000;
-  process.stdout.write(`Sent ${bytesPerSecondSent} bytes/s (${mbpsSent.toFixed(2)} Mbps). Received ${bytesPerSecondReceived} bytes/s (${mbpsRecv.toFixed(2)} Mbps)  \r`);
+  process.stdout.write(`Sent ${bytesPerSecondSent} bytes/s (${mbpsSent.toFixed(2)} Mbps). Received ${bytesPerSecondReceived} bytes/s (${mbpsRecv.toFixed(2)} Mbps). Last Received Tick - ${lastReceivedTick} (${ticksPerSecond} tps)                                      \r`);
 }, 1000);
 
 setInterval(() => {
@@ -58,66 +62,62 @@ server.on('message', (message, rinfo) => {
     // match = matches.getMatchByPlayer(playerId);
     
     addSubscriber(playerId, rinfo.address, rinfo.port);
-  } else if (message.toString().startsWith('DISCONNECT')) {
+    return;
+  }
+  
+  if (message.toString().startsWith('DISCONNECT')) {
     playerId = message.toString().substring(10, message.length - 1);
     // match = matches.getMatchByPlayer(playerId);
     
     removeSubscriber(playerId, rinfo.address, rinfo.port);
     playerInputs.removePlayer(playerId);
-  } else {  
-    totalReceivedBytes+=message.length;
+    disk.removeAuthority(playerId);
+    return;
+  }
 
-    const subscriberId = rinfo.address+':'+rinfo.port;
+  totalReceivedBytes+=message.length;
 
-    if (!subscribers.has(subscriberId)) {
-      return;
-    }
+  const subscriberId = rinfo.address+':'+rinfo.port;
 
-    const messageId = message.readInt32LE(0);
-    const seqNum = message.readInt32LE(4);
-    const totalSegments = message.readInt32LE(8);
+  if (!subscribers.has(subscriberId)) {
+    return;
+  }
 
-    const msgPart = message.subarray(12);
+  const messageId = message.readInt32LE(0);
+  const seqNum = message.readInt32LE(4);
+  const totalSegments = message.readInt32LE(8);
 
-    subscribers.get(subscriberId).messagesReceived++;
+  const msgPart = message.subarray(12);
 
-    if(!messageSegments.hasOwnProperty(subscriberId+':'+messageId)) {
-      messageSegments[subscriberId+':'+messageId] = {};
-    }
-    messageSegments[subscriberId+':'+messageId][seqNum] = msgPart;
+  subscribers.get(subscriberId).messagesReceived++;
 
-    if (Object.keys(messageSegments[subscriberId+':'+messageId]).length === totalSegments) {
-      let combinedMessage = Buffer.concat(
-        Object.keys(messageSegments[subscriberId+':'+messageId])
-        .sort((a,b) => parseInt(a) - parseInt(b))
-        .map(key => messageSegments[subscriberId+':'+messageId][key]));
+  if(!messageSegments.hasOwnProperty(subscriberId+':'+messageId)) {
+    messageSegments[subscriberId+':'+messageId] = {};
+  }
+  messageSegments[subscriberId+':'+messageId][seqNum] = msgPart;
 
-      delete messageSegments[subscriberId+':'+messageId];
+  if (Object.keys(messageSegments[subscriberId+':'+messageId]).length === totalSegments) {
+    let combinedMessage = Buffer.concat(
+      Object.keys(messageSegments[subscriberId+':'+messageId])
+      .sort((a,b) => parseInt(a) - parseInt(b))
+      .map(key => messageSegments[subscriberId+':'+messageId][key]));
 
-      // Delete old messages
-      Object.keys(messageSegments).filter((key) => {
-        let parts = key.split(':');
-        if (((parts[0]+':'+parts[1]) == subscriberId) && (parseInt(parts[2]) < messageId)) {
-          return true;
-        }
-        return false;
-      }).forEach((key) => {
-        delete messageSegments[key];
-      });
+    delete messageSegments[subscriberId+':'+messageId];
 
-      zlib.gunzip(combinedMessage, (err, uncompressedMsg) => {
-        if (err) {
-          console.error(err);
-          return;
-        }
+    deleteOldMessages(subscriberId, messageId)
 
-        //console.log(`Received message: ${uncompressedMsg} from ${rinfo.address}:${rinfo.port}`);
+    zlib.gunzip(combinedMessage, (err, uncompressedMsg) => {
+      if (err) {
+        console.error(err);
+        return;
+      }
 
-        const data = JSON.parse(uncompressedMsg);
-        
-        processMessage(data);
-      });
-    }
+      //console.log(`Received message: ${uncompressedMsg} from ${rinfo.address}:${rinfo.port}`);
+
+      const data = JSON.parse(uncompressedMsg);
+      
+      processMessage(data);
+    });
   }
 });
 
@@ -127,6 +127,19 @@ server.on('listening', () => {
 });
 
 server.bind(1234);
+
+const deleteOldMessages = (subscriberId, lastMessageId) => {
+  Object.keys(messageSegments).filter((key) => {
+    let parts = key.split(':');
+    if (((parts[0]+':'+parts[1]) == subscriberId) && (parseInt(parts[2]) < lastMessageId)) {
+      return true;
+    }
+    return false;
+  }).forEach((key) => {
+    delete messageSegments[key];
+  });
+}
+
 
 // Function to add a subscriber to the list of subscribers
 const addSubscriber = (playerId, address, port) => {
@@ -161,28 +174,36 @@ const processMessage = (data) => {
   let serverTime = Number(hrTime / BigInt(1000000));
 
   let serverPing = serverTime - Number(data.serverTime);
+  let serverLastReceivedTick = data.gameTimeTick;
 
-  playerInputs.setPlayerLastClientTime(playerId, data.clientTime, serverTime);
+  let estimatedAhead = lastReceivedTick - data.lastReceivedTick;
+  if (data.lastReceivedTick == 0) {
+    estimatedAhead = 0;
+  }
 
   data.gameStatesHistory.forEach(gameState => {
-    disk.addDiskState(playerId, gameState.gameTimeTick, gameState.diskState);
+    disk.addDiskState(playerId, gameState.gameTimeTick, gameState.diskState, estimatedAhead);
 
     Object.keys(gameState.playerStates).forEach(playerId => {
       let playerState = gameState.playerStates[playerId];
       playerState.playerPing = serverPing;
       playerInputs.addPlayerState(playerId, gameState.gameTimeTick, playerState);
     });
-
-    if (gameState.diskState.simulated == false) {
-      playerInputs.setPlayerLastInputGameTick(playerId, gameState.gameTimeTick);
-    }
   });
+
+  if (lastReceivedTick < serverLastReceivedTick) {
+    lastReceivedTick = serverLastReceivedTick;
+  }
+
+  playerInputs.setPlayerLastInputGameTick(playerId, data.lastReceivedTick);
+  playerInputs.setPlayerLastClientTime(playerId, data.clientTime, serverTime, estimatedAhead);
 }
 
 const createServerMessage = (playerId) => {
   let hrTime = process.hrtime.bigint();
   let serverTime = Number(hrTime / BigInt(1000000));
   let gameTicksFrom = playerInputs.getPlayerLastInputGameTick(playerId);
+  let estimatedGameTick = 0;
   
   const diskStates = disk.getDiskStatesFrom(gameTicksFrom);
   const serverPlayersStates = playerInputs.getPlayerStatesFrom(gameTicksFrom);
@@ -190,34 +211,43 @@ const createServerMessage = (playerId) => {
   let gameStatesHistory = [];
 
   for (const gameTick in diskStates) {
-    if (Object.hasOwnProperty.call(diskStates, gameTick)) {
-      const diskState = diskStates[gameTick];
+    if (!Object.hasOwnProperty.call(diskStates, gameTick)) {
+      continue;
+    }
 
-      let playerStates = {};
-      
-      if (serverPlayersStates.hasOwnProperty(gameTick)) {
-        for (const playerId in serverPlayersStates[gameTick]) {
-          if (Object.hasOwnProperty.call(serverPlayersStates[gameTick], playerId)) {
-            const playerState = serverPlayersStates[gameTick][playerId];
-            
-            playerStates[playerId] = playerState;
-          }
+    if (gameTick > estimatedGameTick) {
+      estimatedGameTick = gameTick;
+    }
+
+    const diskState = diskStates[gameTick];
+
+    let playerStates = {};
+    
+    if (serverPlayersStates.hasOwnProperty(gameTick)) {
+      for (const playerId in serverPlayersStates[gameTick]) {
+        if (Object.hasOwnProperty.call(serverPlayersStates[gameTick], playerId)) {
+          const playerState = serverPlayersStates[gameTick][playerId];
+          
+          playerStates[playerId] = playerState;
         }
       }
-      
-      let gameState = {
-          "GameTimeTick": gameTick,
-          "PlayersStates": playerStates,
-          "DiskState": diskState
-        };
-
-      gameStatesHistory.push(gameState);
     }
+    
+    let gameState = {
+        "GameTimeTick": gameTick,
+        "PlayersStates": playerStates,
+        "DiskState": diskState
+      };
+
+    gameStatesHistory.push(gameState);
   }
+
+  estimatedGameTick += disk.getEstimatedGameTime();
 
   return {
     "ServerTime": serverTime,
     "ClientTime": playerInputs.getPlayerLastClientTime(playerId, serverTime),
+    "EstimatedGameTick": estimatedGameTick,
     "GameStatesHistory": gameStatesHistory
   };
 }
