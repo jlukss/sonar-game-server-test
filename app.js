@@ -49,6 +49,7 @@ setInterval(() => {
     if (subscriber.messagesReceived == 0) {
       removeSubscriber(subscriberId, subscriber.address, subscriber.port);
       playerInputs.removePlayer(subscriber.playerId);
+      disk.removeAuthority(playerId);
       console.log(`Subscriber timed out:  ${subscriber.playerId} - ${subscriber.address}:${subscriber.port}`);
     } else {
       subscriber.messagesReceived = 0;
