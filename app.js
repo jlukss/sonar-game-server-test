@@ -15,6 +15,8 @@ let totalReceivedBytes = 0;
 let lastReceivedTick = 0;
 let startingTick = 0;
 
+const noTimeouts = process.argv.includes('--noTimeouts');
+
 setInterval(() => {
   const bytesPerSecondSent = totalSentBytes;
   const bytesPerSecondReceived = totalReceivedBytes;
@@ -43,19 +45,20 @@ setInterval(() => {
   });
 }, 1000 / global.physicsFrameRate);
 
-
-setInterval(() => {
-  subscribers.forEach((subscriber, subscriberId) => {
-    if (subscriber.messagesReceived == 0) {
-      removeSubscriber(subscriberId, subscriber.address, subscriber.port);
-      playerInputs.removePlayer(subscriber.playerId);
-      disk.removeAuthority(playerId);
-      console.log(`Subscriber timed out:  ${subscriber.playerId} - ${subscriber.address}:${subscriber.port}`);
-    } else {
-      subscriber.messagesReceived = 0;
-    }
-  });
-}, 5000);
+if (!noTimeouts) {
+  setInterval(() => {
+    subscribers.forEach((subscriber, subscriberId) => {
+      if (subscriber.messagesReceived == 0) {
+        removeSubscriber(subscriberId, subscriber.address, subscriber.port);
+        playerInputs.removePlayer(subscriber.playerId);
+        disk.removeAuthority(playerId);
+        console.log(`Subscriber timed out:  ${subscriber.playerId} - ${subscriber.address}:${subscriber.port}`);
+      } else {
+        subscriber.messagesReceived = 0;
+      }
+    });
+  }, 5000);
+}
 
 server.on('message', (message, rinfo) => {
   if (message.toString().startsWith('CONNECT')) {
@@ -243,7 +246,7 @@ const createServerMessage = (playerId) => {
     gameStatesHistory.push(gameState);
   }
 
-  estimatedGameTick += disk.getEstimatedGameTime();
+  estimatedGameTick = disk.getEstimatedGameTime(estimatedGameTick);
 
   return {
     "ServerTime": serverTime,
