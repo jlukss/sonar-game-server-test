@@ -2,7 +2,6 @@ let playerInputs = {};
 let lastClientTime = {};
 
 const addPlayerState = (playerId, gameTick, state) => {
-    state.bSimulated = false;
     if(!playerInputs.hasOwnProperty(playerId))
     {
         playerInputs[playerId] = {
@@ -24,11 +23,11 @@ const addPlayerState = (playerId, gameTick, state) => {
 
 const setPlayerLastInputGameTick = (playerId, gameTick) => {
     if (playerInputs[playerId].lastReceivedTick < gameTick) {
-        playerInputs[playerId].lastReceivedTick = gameTick;
+        playerInputs[playerId].lastReceivedTick = parseInt(gameTick);
     }
 }
 
-const getPlayerLastInputGameTick = () => {
+const getPlayerLastInputGameTick = (playerId) => {
     if(!playerInputs.hasOwnProperty(playerId)) {
         return 0
     }

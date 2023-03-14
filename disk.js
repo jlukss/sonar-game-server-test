@@ -72,7 +72,7 @@ const removeAuthority = (playerId) => {
 const changeDiskAuthority = (gameTick, playerId, estimatedAhead) => {
     authorityHistory[gameTick] = currentAuthorativePlayer;
     currentAuthorativePlayer = playerId;
-    authorityAheadOfServerTicks = estimatedAhead;
+    authorityAheadOfServerTicks = parseInt(estimatedAhead);
 }
 
 const getDiskStatesFrom = (fromGameTick) => {
@@ -89,7 +89,7 @@ const getDiskStatesFrom = (fromGameTick) => {
 }
 
 const getEstimatedGameTime = (latestReceivedTick) => {
-    return latestReceivedTick + authorityAheadOfServerTicks;
+    return parseInt(latestReceivedTick) + authorityAheadOfServerTicks;
 }
 
 module.exports = {

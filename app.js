@@ -180,7 +180,7 @@ const processMessage = (data) => {
   let serverPing = serverTime - Number(data.serverTime);
   let serverLastReceivedTick = data.gameTimeTick;
 
-  let estimatedAhead = lastReceivedTick - data.lastReceivedTick;
+  let estimatedAhead = serverLastReceivedTick - data.lastReceivedTick;
   if (data.lastReceivedTick == 0) {
     estimatedAhead = 0;
   }
@@ -191,7 +191,9 @@ const processMessage = (data) => {
     Object.keys(gameState.playerStates).forEach(playerId => {
       let playerState = gameState.playerStates[playerId];
       playerState.playerPing = serverPing;
-      playerInputs.addPlayerState(playerId, gameState.gameTimeTick, playerState);
+      if (!playerState.bSimulated) {
+        playerInputs.addPlayerState(playerId, gameState.gameTimeTick, playerState);
+      }
     });
   });
 
