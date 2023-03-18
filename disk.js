@@ -30,6 +30,10 @@ let authorityAheadOfServerTicks = 0;
 let currentAuthorativePlayer = "";
 
 const addDiskState = (playerId, gameTick, diskState, estimatedAhead) => {
+    if (diskState.playerHodling != currentAuthorativePlayer) {
+        changeDiskAuthority(gameTick, diskState.playerHodling, estimatedAhead);
+    }
+
     if(currentAuthorativePlayer == "") 
     {
         changeDiskAuthority(gameTick, playerId, estimatedAhead);
