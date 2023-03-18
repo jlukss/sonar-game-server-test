@@ -30,8 +30,8 @@ let authorityAheadOfServerTicks = 0;
 let currentAuthorativePlayer = "";
 
 const addDiskState = (playerId, gameTick, diskState, estimatedAhead) => {
-    if (diskState.playerHodling != currentAuthorativePlayer) {
-        changeDiskAuthority(gameTick, diskState.playerHodling, estimatedAhead);
+    if (diskState.playerHolding !== "" && diskState.playerHolding !== currentAuthorativePlayer) {
+        changeDiskAuthority(gameTick, diskState.playerHolding, estimatedAhead);
     }
 
     if(currentAuthorativePlayer == "") 
@@ -96,10 +96,15 @@ const getEstimatedGameTime = (latestReceivedTick) => {
     return parseInt(latestReceivedTick) + authorityAheadOfServerTicks;
 }
 
+const getCurrentAuthority = () => {
+    return currentAuthorativePlayer;
+}
+
 module.exports = {
     addDiskState,
     changeDiskAuthority,
     removeAuthority,
     getDiskStatesFrom,
-    getEstimatedGameTime
+    getEstimatedGameTime,
+    getCurrentAuthority
 }

@@ -26,7 +26,9 @@ setInterval(() => {
   startingTick = lastReceivedTick;
   const mbpsSent = bytesPerSecondSent * 8 / 1000000;
   const mbpsRecv = bytesPerSecondReceived * 8 / 1000000;
-  process.stdout.write(`Sent ${bytesPerSecondSent} bytes/s (${mbpsSent.toFixed(2)} Mbps). Received ${bytesPerSecondReceived} bytes/s (${mbpsRecv.toFixed(2)} Mbps). Last Received Tick - ${lastReceivedTick} (${ticksPerSecond} tps)                                      \r`);
+  const currentAuthorativePlayer = disk.getCurrentAuthority();
+
+  process.stdout.write(`Sent ${bytesPerSecondSent} bytes/s (${mbpsSent.toFixed(2)} Mbps). Received ${bytesPerSecondReceived} bytes/s (${mbpsRecv.toFixed(2)} Mbps). Last Received Tick - ${lastReceivedTick} (${ticksPerSecond} tps) (${currentAuthorativePlayer})\r`);
 }, 1000);
 
 setInterval(() => {
