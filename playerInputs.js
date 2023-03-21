@@ -22,7 +22,7 @@ const addPlayerState = (playerId, gameTick, state) => {
 }
 
 const setPlayerLastInputGameTick = (playerId, gameTick) => {
-    if (playerInputs[playerId].lastReceivedTick < gameTick) {
+    if (!playerInputs.hasOwnProperty(playerId) || playerInputs[playerId].lastReceivedTick < gameTick) {
         playerInputs[playerId].lastReceivedTick = parseInt(gameTick);
     }
 }
