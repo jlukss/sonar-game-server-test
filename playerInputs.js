@@ -24,7 +24,8 @@ const addPlayerState = (playerId, gameTick, state) => {
 const setPlayerLastInputGameTick = (playerId, gameTick) => {    
     if (!playerInputs.hasOwnProperty(playerId)) {
         playerInputs[playerId] = {
-            lastReceivedTick: 0
+            lastReceivedTick: 0,
+            gameStates: {}
         }
     }
     if (playerInputs[playerId].lastReceivedTick < gameTick) {
