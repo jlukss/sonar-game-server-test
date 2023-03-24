@@ -1,5 +1,9 @@
+const MAX_PING_MEASUREMENTS = 10;
+
 let playerInputs = {};
 let lastClientTime = {};
+let ticksOffsetHistory = {};
+let clientPingsHistory = {};
 
 const addPlayerState = (playerId, gameTick, state) => {
     if(!playerInputs.hasOwnProperty(playerId))
@@ -65,10 +69,22 @@ const getPlayerStatesFrom = (fromGameTick) => {
     return result;
 }
 
-const setPlayerLastClientTime = (playerId, clientTime, messageTime, ticksAhead) => {
+const setPlayerLastClientTime = (playerId, clientTime, messageTime, clientPing, ticksAhead) => {
     if (!lastClientTime.hasOwnProperty(playerId) || lastClientTime[playerId] < clientTime) {
-        lastClientTime[playerId] = [clientTime, messageTime, ticksAhead];
+        lastClientTime[playerId] = [clientTime, messageTime];
     }
+
+    if (!clientPingsHistory.hasOwnProperty(playerId)) {
+        clientPingsHistory[playerId] = [clientPing];
+        ticksOffsetHistory[playerId] = [ticksAhead];
+    } else {
+        clientPingsHistory[playerId].push(clientPing);
+        ticksOffsetHistory[playerId].push(ticksAhead);
+    }
+    if (clientPingsHistory.length > MAX_PING_MEASUREMENTS) {
+        clientPingsHistory.shift();
+        ticksOffsetHistory.shift();
+      }
 }
 
 const getPlayerLastClientTime = (playerId, serverTime) => {
@@ -82,10 +98,23 @@ const getPlayerLastClientTime = (playerId, serverTime) => {
 }
 
 const getEstimatedTicksAhead = (playerId) => {
-    if (lastClientTime.hasOwnProperty(playerId)) {
-        return lastClientTime[playerId][2];
+    let weightedSum = 0;
+    let weightSum = 0;
+
+    if (!clientPingsHistory.hasOwnProperty(playerId)) {
+        return 0;
     }
-    return 0;
+  
+    for (let i = 0; i < ticksOffsetHistory[playerId].length; i++) {
+      const timeOffset = ticksOffsetHistory[playerId][i];
+      const rtt = clientPingsHistory[playerId][i];
+      const weight = 1 / rtt;
+  
+      weightedSum += timeOffset * weight;
+      weightSum += weight;
+    }
+  
+    return round(weightedSum / weightSum);
 }
 
 const removePlayer = (playerId) => {

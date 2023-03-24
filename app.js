@@ -187,9 +187,9 @@ const processMessage = (data) => {
   let serverPing = serverTime - Number(data.serverTime);
   let serverLastReceivedTick = parseInt(data.gameTimeTick);
 
-  let estimatedAhead = serverLastReceivedTick - parseInt(data.lastReceivedTick);
+  let estimatedAhead = (serverLastReceivedTick - parseInt(data.lastReceivedTick)) / 2;
   if (parseInt(data.lastReceivedTick) == 0) {
-    estimatedAhead = Math.round((serverPing / 1000) * global.physicsFrameTime);
+    estimatedAhead = Math.round((serverPing / 1000) * global.physicsFrameTime) / 2;
   }
 
   data.gameStatesHistory.forEach(gameState => {
@@ -209,10 +209,7 @@ const processMessage = (data) => {
   }
 
   playerInputs.setPlayerLastInputGameTick(playerId, parseInt(data.lastReceivedTick));
-  playerInputs.setPlayerLastClientTime(playerId, data.clientTime, serverTime, estimatedAhead);
-  console.log(`Server ping is ${serverPing}ms`);
-  console.log(`Server last received tick is ${serverLastReceivedTick}`);
-  console.log(`Estimated ahead is ${estimatedAhead} ticks`);
+  playerInputs.setPlayerLastClientTime(playerId, data.clientTime, serverTime, serverPing, estimatedAhead);
 }
 
 const createServerMessage = (playerId) => {
