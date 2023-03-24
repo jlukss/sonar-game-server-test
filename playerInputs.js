@@ -5,6 +5,15 @@ let lastClientTime = {};
 let ticksOffsetHistory = {};
 let clientPingsHistory = {};
 
+const reset = () => {
+    playerInputs = {};
+    lastClientTime = {};
+    ticksOffsetHistory = {};
+    clientPingsHistory = {};
+
+    console.log('Player inputs reset');
+}
+
 const addPlayerState = (playerId, gameTick, state) => {
     if(!playerInputs.hasOwnProperty(playerId))
     {
@@ -128,6 +137,7 @@ const removePlayer = (playerId) => {
 }
 
 module.exports = {
+    reset,
     addPlayerState,
     setPlayerLastInputGameTick,
     getPlayerLastInputGameTick,

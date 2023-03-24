@@ -29,6 +29,16 @@ let authorityHistory = {};
 let currentAuthorativePlayer = "";
 let lastDiskState = 0;
 
+const reset = () => {
+    diskStates = {};
+    playerDiskStates = {};
+    authorityHistory = {};
+    currentAuthorativePlayer = "";
+    lastDiskState = 0;
+
+    console.log("Disk reset");
+}
+
 const addDiskState = (playerId, gameTick, diskState) => {
     if(lastDiskState < gameTick) {
         lastDiskState = gameTick;
@@ -110,6 +120,6 @@ module.exports = {
     changeDiskAuthority,
     removeAuthority,
     getDiskStatesFrom,
-    getEstimatedGameTime,
-    getCurrentAuthority
+    getCurrentAuthority,
+    reset
 }

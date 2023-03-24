@@ -173,6 +173,14 @@ const removeSubscriber = (playerId, address, port) => {
   {
     subscribers.delete(subscriberId);
     console.log(`Subscriber disconnected:  ${playerId} - ${address}:${port}`);
+
+    if (subscribers.length == 0) {
+      serverGameTime = 0;
+
+      disk.reset();
+      playerInputs.reset();
+    }
+
     return;
   }
   console.log(`Subscriber with: ${playerId} - ${address}:${port} not found`);
