@@ -38,7 +38,7 @@ setInterval(() => {
   }
 
   subscribers.forEach((subscriber, subscriberId) => {
-    const messageString = JSON.stringify(createsocketMessage(subscriber.playerId));
+    const messageString = JSON.stringify(createServerMessage(subscriber.playerId));
   
     const compressedMessage = zlib.gzipSync(messageString, {level: 1});
 
@@ -185,10 +185,10 @@ const processMessage = (data) => {
   let serverTime = Number(hrTime / BigInt(1000000));
 
   let serverPing = serverTime - Number(data.serverTime);
-  let serverLastReceivedTick = data.gameTimeTick;
+  let serverLastReceivedTick = parseInt(data.gameTimeTick);
 
-  let estimatedAhead = serverLastReceivedTick - data.lastReceivedTick;
-  if (data.lastReceivedTick == 0) {
+  let estimatedAhead = serverLastReceivedTick - parseInt(data.lastReceivedTick);
+  if (parseInt(data.lastReceivedTick) == 0) {
     estimatedAhead = Math.round((serverPing / 1000) * global.physicsFrameTime);
   }
 
@@ -208,8 +208,11 @@ const processMessage = (data) => {
     lastReceivedTick = serverLastReceivedTick;
   }
 
-  playerInputs.setPlayerLastInputGameTick(playerId, data.lastReceivedTick);
+  playerInputs.setPlayerLastInputGameTick(playerId, parseInt(data.lastReceivedTick));
   playerInputs.setPlayerLastClientTime(playerId, data.clientTime, serverTime, estimatedAhead);
+  console.log(`Server ping is ${serverPing}ms`);
+  console.log(`Server last received tick is ${serverLastReceivedTick}`);
+  console.log(`Estimated ahead is ${estimatedAhead} ticks`);
 }
 
 const createServerMessage = (playerId) => {
