@@ -1,6 +1,6 @@
 const dgram = require('dgram');
 const zlib = require('node:zlib');
-const server = dgram.createSocket('udp4');
+const socket = dgram.createSocket('udp4');
 // const matches = require('./matches.js');
 const disk = require('./disk.js');
 const playerInputs = require('./playerInputs.js');
@@ -14,6 +14,7 @@ let totalSentBytes = 0;
 let totalReceivedBytes = 0;
 let lastReceivedTick = 0;
 let startingTick = 0;
+let serverGameTime = 0;
 
 const noTimeouts = process.argv.includes('--noTimeouts');
 
@@ -28,12 +29,16 @@ setInterval(() => {
   const mbpsRecv = bytesPerSecondReceived * 8 / 1000000;
   const currentAuthorativePlayer = disk.getCurrentAuthority();
 
-  process.stdout.write(`Sent ${bytesPerSecondSent} bytes/s (${mbpsSent.toFixed(2)} Mbps). Received ${bytesPerSecondReceived} bytes/s (${mbpsRecv.toFixed(2)} Mbps). Last Received Tick - ${lastReceivedTick} (${ticksPerSecond} tps) (${currentAuthorativePlayer})\r`);
+  process.stdout.write(`Sent ${bytesPerSecondSent} bytes/s (${mbpsSent.toFixed(2)} Mbps). Received ${bytesPerSecondReceived} bytes/s (${mbpsRecv.toFixed(2)} Mbps). Last Received Tick - ${lastReceivedTick}/${serverGameTime} (${ticksPerSecond} tps) (${currentAuthorativePlayer})\r`);
 }, 1000);
 
 setInterval(() => {
+  if (subscribers.length > 0) {
+    serverGameTime++;
+  }
+
   subscribers.forEach((subscriber, subscriberId) => {
-    const messageString = JSON.stringify(createServerMessage(subscriber.playerId));
+    const messageString = JSON.stringify(createsocketMessage(subscriber.playerId));
   
     const compressedMessage = zlib.gzipSync(messageString, {level: 1});
 
@@ -41,7 +46,7 @@ setInterval(() => {
     messageLength.writeUInt32LE(messageString.length);
     const fullMessage = Buffer.concat([messageLength, compressedMessage]);
 
-    server.send(fullMessage, subscriber.port, subscriber.address);
+    socket.send(fullMessage, subscriber.port, subscriber.address);
     totalSentBytes+=fullMessage.length;
     //console.log(`Sent message ${messageString.length}:${compressedMessage.byteLength} to ${subscriber.address}:${subscriber.port}`);
   });
@@ -62,7 +67,7 @@ if (!noTimeouts) {
   }, 5000);
 }
 
-server.on('message', (message, rinfo) => {
+socket.on('message', (message, rinfo) => {
   if (message.toString().startsWith('CONNECT')) {
     playerId = message.toString().substring(7, message.length - 1);
     // match = matches.getMatchByPlayer(playerId);
@@ -127,12 +132,12 @@ server.on('message', (message, rinfo) => {
   }
 });
 
-server.on('listening', () => {
-  const address = server.address();
+socket.on('listening', () => {
+  const address = socket.address();
   console.log(`Server listening on ${address.address}:${address.port}`);
 });
 
-server.bind(1234);
+socket.bind(1234);
 
 const deleteOldMessages = (subscriberId, lastMessageId) => {
   Object.keys(messageSegments).filter((key) => {
@@ -184,11 +189,11 @@ const processMessage = (data) => {
 
   let estimatedAhead = serverLastReceivedTick - data.lastReceivedTick;
   if (data.lastReceivedTick == 0) {
-    estimatedAhead = 0;
+    estimatedAhead = Math.round((serverPing / 1000) * global.physicsFrameTime);
   }
 
   data.gameStatesHistory.forEach(gameState => {
-    disk.addDiskState(playerId, gameState.gameTimeTick, gameState.diskState, estimatedAhead);
+    disk.addDiskState(playerId, gameState.gameTimeTick, gameState.diskState);
 
     Object.keys(gameState.playerStates).forEach(playerId => {
       let playerState = gameState.playerStates[playerId];
@@ -211,7 +216,6 @@ const createServerMessage = (playerId) => {
   let hrTime = process.hrtime.bigint();
   let serverTime = Number(hrTime / BigInt(1000000));
   let gameTicksFrom = playerInputs.getPlayerLastInputGameTick(playerId);
-  let estimatedGameTick = 0;
   
   const diskStates = disk.getDiskStatesFrom(gameTicksFrom);
   const serverPlayersStates = playerInputs.getPlayerStatesFrom(gameTicksFrom);
@@ -221,10 +225,6 @@ const createServerMessage = (playerId) => {
   for (const gameTick in diskStates) {
     if (!Object.hasOwnProperty.call(diskStates, gameTick)) {
       continue;
-    }
-
-    if (gameTick > estimatedGameTick) {
-      estimatedGameTick = gameTick;
     }
 
     const diskState = diskStates[gameTick];
@@ -250,12 +250,10 @@ const createServerMessage = (playerId) => {
     gameStatesHistory.push(gameState);
   }
 
-  estimatedGameTick = disk.getEstimatedGameTime(estimatedGameTick);
-
   return {
     "ServerTime": serverTime,
     "ClientTime": playerInputs.getPlayerLastClientTime(playerId, serverTime),
-    "EstimatedGameTick": estimatedGameTick,
+    "EstimatedGameTick": serverGameTime + playerInputs.getPlayerEstimatedAhead(playerId),
     "GameStatesHistory": gameStatesHistory
   };
 }

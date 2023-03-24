@@ -26,17 +26,21 @@ let diskStates = {
 };
 let playerDiskStates = {};
 let authorityHistory = {};
-let authorityAheadOfServerTicks = 0;
 let currentAuthorativePlayer = "";
+let lastDiskState = 0;
 
-const addDiskState = (playerId, gameTick, diskState, estimatedAhead) => {
+const addDiskState = (playerId, gameTick, diskState) => {
+    if(lastDiskState < gameTick) {
+        lastDiskState = gameTick;
+    }
+
     if (diskState.playerHolding !== "" && diskState.playerHolding !== currentAuthorativePlayer) {
-        changeDiskAuthority(gameTick, diskState.playerHolding, estimatedAhead);
+        changeDiskAuthority(gameTick, diskState.playerHolding);
     }
 
     if(currentAuthorativePlayer == "") 
     {
-        changeDiskAuthority(gameTick, playerId, estimatedAhead);
+        changeDiskAuthority(gameTick, playerId);
     }
     diskState.bSimulated = true;
 
@@ -73,10 +77,15 @@ const removeAuthority = (playerId) => {
     }
 }
 
-const changeDiskAuthority = (gameTick, playerId, estimatedAhead) => {
+const changeDiskAuthority = (gameTick, playerId) => {
     authorityHistory[gameTick] = currentAuthorativePlayer;
     currentAuthorativePlayer = playerId;
-    authorityAheadOfServerTicks = parseInt(estimatedAhead);
+    for (const tick = gameTick + 1; tick < lastDiskState; tick++) {
+        if (diskStates.hasOwnProperty(tick)) {
+            delete diskStates[tick];
+        }
+    }
+    lastDiskState = gameTick;
 }
 
 const getDiskStatesFrom = (fromGameTick) => {
@@ -90,10 +99,6 @@ const getDiskStatesFrom = (fromGameTick) => {
     });
 
     return result;
-}
-
-const getEstimatedGameTime = (latestReceivedTick) => {
-    return parseInt(latestReceivedTick) + authorityAheadOfServerTicks;
 }
 
 const getCurrentAuthority = () => {
