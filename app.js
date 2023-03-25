@@ -16,6 +16,9 @@ let lastReceivedTick = 0;
 let startingTick = 0;
 let serverGameTime = 0;
 
+let targetDeltaTime = 1 / global.physicsFrameRate;
+const MAX_DELTA_TIME_DEVIATION = 0.1;
+
 const noTimeouts = process.argv.includes('--noTimeouts');
 
 setInterval(() => {
@@ -172,7 +175,7 @@ const removeSubscriber = (playerId, address, port) => {
   if (subscribers.has(subscriberId)) 
   {
     subscribers.delete(subscriberId);
-    console.log("Subscriber disconnected:  ${playerId} - ${address}:${port}");
+    console.log(`Subscriber disconnected:  ${playerId} - ${address}:${port}`);
 
     if (subscribers.size == 0) {
       serverGameTime = 0;
@@ -197,19 +200,23 @@ const processMessage = (data) => {
 
   let estimatedAhead = (serverLastReceivedTick - parseInt(data.lastReceivedTick)) / 2;
   if (parseInt(data.lastReceivedTick) == 0) {
-    estimatedAhead = Math.round((serverPing / 1000) * global.physicsFrameTime) / 2;
+    estimatedAhead = Math.round((serverPing / 1000) * global.physicsFrameRate) / 2;
   }
 
   data.gameStatesHistory.forEach(gameState => {
-    disk.addDiskState(playerId, gameState.gameTimeTick, gameState.diskState);
+    if (Math.abs(parseFloat(gameState.deltaTime) - targetDeltaTime) < targetDeltaTime * MAX_DELTA_TIME_DEVIATION) {
+      disk.addDiskState(playerId, gameState.gameTimeTick, gameState.diskState);
 
-    Object.keys(gameState.playerStates).forEach(playerId => {
-      let playerState = gameState.playerStates[playerId];
-      playerState.playerPing = serverPing;
-      if (!playerState.bSimulated) {
-        playerInputs.addPlayerState(playerId, gameState.gameTimeTick, playerState);
-      }
-    });
+      Object.keys(gameState.playerStates).forEach(playerId => {
+        let playerState = gameState.playerStates[playerId];
+        playerState.playerPing = serverPing;
+        if (!playerState.bSimulated) {
+          playerInputs.addPlayerState(playerId, gameState.gameTimeTick, playerState);
+        }
+      });
+    } else {
+      console.log('Discarding game state ' + gameState.gameTimeTick + ' with deltaTime: ' + parseFloat(gameState.deltaTime) + ' (target: ' + targetDeltaTime + ') - Source: ' + data.source);
+    }
   });
 
   if (lastReceivedTick < serverLastReceivedTick) {
@@ -258,10 +265,12 @@ const createServerMessage = (playerId) => {
     gameStatesHistory.push(gameState);
   }
 
+  let estimatedGameTime = serverGameTime + playerInputs.getEstimatedTicksAhead(playerId);
+
   return {
     "ServerTime": serverTime,
     "ClientTime": playerInputs.getPlayerLastClientTime(playerId, serverTime),
-    "EstimatedGameTick": serverGameTime + playerInputs.getEstimatedTicksAhead(playerId),
+    "EstimatedGameTick": estimatedGameTime,
     "GameStatesHistory": gameStatesHistory
   };
 }
