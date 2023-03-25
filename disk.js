@@ -90,7 +90,7 @@ const removeAuthority = (playerId) => {
 const changeDiskAuthority = (gameTick, playerId) => {
     authorityHistory[gameTick] = currentAuthorativePlayer;
     currentAuthorativePlayer = playerId;
-    for (const tick = gameTick + 1; tick < lastDiskState; tick++) {
+    for (tick = gameTick + 1; tick < lastDiskState; tick++) {
         if (diskStates.hasOwnProperty(tick)) {
             delete diskStates[tick];
         }

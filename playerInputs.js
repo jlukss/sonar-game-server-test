@@ -123,7 +123,7 @@ const getEstimatedTicksAhead = (playerId) => {
       weightSum += weight;
     }
   
-    return round(weightedSum / weightSum);
+    return Math.round(weightedSum / weightSum);
 }
 
 const removePlayer = (playerId) => {

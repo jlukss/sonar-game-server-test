@@ -33,7 +33,7 @@ setInterval(() => {
 }, 1000);
 
 setInterval(() => {
-  if (subscribers.length > 0) {
+  if (subscribers.size > 0) {
     serverGameTime++;
   }
 
@@ -172,9 +172,9 @@ const removeSubscriber = (playerId, address, port) => {
   if (subscribers.has(subscriberId)) 
   {
     subscribers.delete(subscriberId);
-    console.log(`Subscriber disconnected:  ${playerId} - ${address}:${port}`);
+    console.log("Subscriber disconnected:  ${playerId} - ${address}:${port}");
 
-    if (subscribers.length == 0) {
+    if (subscribers.size == 0) {
       serverGameTime = 0;
 
       disk.reset();
@@ -261,7 +261,7 @@ const createServerMessage = (playerId) => {
   return {
     "ServerTime": serverTime,
     "ClientTime": playerInputs.getPlayerLastClientTime(playerId, serverTime),
-    "EstimatedGameTick": serverGameTime + playerInputs.getPlayerEstimatedAhead(playerId),
+    "EstimatedGameTick": serverGameTime + playerInputs.getEstimatedTicksAhead(playerId),
     "GameStatesHistory": gameStatesHistory
   };
 }
