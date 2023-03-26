@@ -30,7 +30,32 @@ let currentAuthorativePlayer = "";
 let lastDiskState = 0;
 
 const reset = () => {
-    diskStates = {};
+    diskStates = { 
+        0: {
+            "bSimulated": false,
+            "velocity":{
+                "x":0.0000000000000000,
+                "y":0.0000000000000000,
+                "z":0.0000000000000000
+            },
+            "position":{
+                "x":0.0000000000000000,
+                "y":0.0000000000000000,
+                "z":0.0000000000000000
+            },
+            "rotation":{
+                "x":0.0000000000000000,
+                "y":0.0000000000000000,
+                "z":0.0000000000000000
+            },
+            "rotationVelocity":{
+                "x":0.0000000000000000,
+                "y":0.0000000000000000,
+                "z":0.0000000000000000
+            },
+            "speed":0.0
+        }
+    };
     playerDiskStates = {};
     authorityHistory = {};
     currentAuthorativePlayer = "";
