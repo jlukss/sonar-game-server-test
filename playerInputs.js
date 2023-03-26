@@ -4,12 +4,16 @@ let playerInputs = {};
 let lastClientTime = {};
 let ticksOffsetHistory = {};
 let clientPingsHistory = {};
+let lastReceivedTick = {};
+let lastPlayerInput = {};
 
 const reset = () => {
     playerInputs = {};
     lastClientTime = {};
     ticksOffsetHistory = {};
     clientPingsHistory = {};
+    lastReceivedTick = {};
+    lastPlayerInput = {};
 
     console.log('Player inputs reset');
 }
@@ -18,60 +22,75 @@ const addPlayerState = (playerId, gameTick, state) => {
     if(!playerInputs.hasOwnProperty(playerId))
     {
         playerInputs[playerId] = {
-            lastReceivedTick: 0,
-            gameStates: {
-                [gameTick]: state
-            }
-        }
-    } else {
-        if (Object.keys(playerInputs[playerId].gameStates).length == global.gameTicksToKeep) 
-        {
-            const sortedKeys = Object.keys(playerInputs[playerId].gameStates).sort((a, b) => a - b);
-            delete playerInputs[playerId].gameStates[sortedKeys[0]];
+            [gameTick]: state
         }
 
-        playerInputs[playerId].gameStates[gameTick] = state;
+        lastPlayerInput[playerId] = gameTick;
+
+        return;
+    }
+
+    if (playerInputs[playerId].hasOwnProperty(gameTick)) {
+        return;
+    }
+
+    playerInputs[playerId][gameTick] = state;
+
+    if (Object.keys(playerInputs[playerId]).length == global.gameTicksToKeep) 
+    {
+        const sortedKeys = Object.keys(playerInputs[playerId]).sort((a, b) => a - b);
+        delete playerInputs[playerId][sortedKeys[0]];
+    }
+
+    if (lastPlayerInput[playerId] < gameTick) {
+        lastPlayerInput[playerId] = gameTick;
     }
 }
 
 const setPlayerLastInputGameTick = (playerId, gameTick) => {    
-    if (!playerInputs.hasOwnProperty(playerId)) {
-        playerInputs[playerId] = {
-            lastReceivedTick: 0,
-            gameStates: {}
-        }
+    if (!lastReceivedTick.hasOwnProperty(playerId)) {
+        lastReceivedTick[playerId] = gameTick;
+
+        return;
     }
-    if (playerInputs[playerId].lastReceivedTick < gameTick) {
-        playerInputs[playerId].lastReceivedTick = parseInt(gameTick);
+
+    if (lastReceivedTick[playerId] < gameTick) {
+        lastReceivedTick[playerId] = parseInt(gameTick);
     }
 }
 
 const getPlayerLastInputGameTick = (playerId) => {
-    if(!playerInputs.hasOwnProperty(playerId)) {
+    if(!lastReceivedTick.hasOwnProperty(playerId)) {
         return 0
     }
 
-    return playerInputs[playerId].lastReceivedTick;
+    let latestInput = lastReceivedTick[playerId];
+
+    Object.keys(lastPlayerInput).forEach(pid => {
+        let gameTick = lastPlayerInput[pid];
+        if (pid !== playerId && gameTick < latestInput) {
+            latestInput = gameTick;
+        }
+    });
+
+    return latestInput;
 }
 
 const getPlayerStatesFrom = (fromGameTick) => {
     let result = {};
 
     for (const playerId in playerInputs) {
-        if (Object.hasOwnProperty.call(playerInputs, playerId)) {
-            for (const gameTick in playerInputs[playerId].gameStates) {
-                if ((gameTick >= fromGameTick) && (Object.hasOwnProperty.call(playerInputs[playerId].gameStates, gameTick))) {
-                    const state = playerInputs[playerId].gameStates[gameTick];
-                    if (!result.hasOwnProperty(gameTick)) {
-                        result[gameTick] = {
-                            [playerId]: state
-                        }
-                    } else {
-                        result[gameTick][playerId] = state;
+        for (const gameTick in playerInputs[playerId]) {
+            if ((gameTick >= fromGameTick) && (Object.hasOwnProperty.call(playerInputs[playerId], gameTick))) {
+                const state = playerInputs[playerId][gameTick];
+                if (!result.hasOwnProperty(gameTick)) {
+                    result[gameTick] = {
+                        [playerId]: state
                     }
+                } else {
+                    result[gameTick][playerId] = state;
                 }
             }
-            
         }
     }
 
@@ -133,6 +152,22 @@ const removePlayer = (playerId) => {
 
     if (lastClientTime.hasOwnProperty(playerId)) {
         delete lastClientTime[playerId];
+    }
+
+    if (lastReceivedTick.hasOwnProperty(playerId)) {
+        delete lastReceivedTick[playerId];
+    }
+
+    if(ticksOffsetHistory.hasOwnProperty(playerId)) {
+        delete ticksOffsetHistory[playerId];
+    }
+
+    if(clientPingsHistory.hasOwnProperty(playerId)) {
+        delete clientPingsHistory[playerId];
+    }
+
+    if(lastPlayerInput.hasOwnProperty(playerId)) {
+        delete lastPlayerInput[playerId];
     }
 }
 
