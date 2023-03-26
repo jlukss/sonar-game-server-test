@@ -140,11 +140,16 @@ const getCurrentAuthority = () => {
     return currentAuthorativePlayer;
 }
 
+const IsAuthority = (playerId) => {
+    return currentAuthorativePlayer == playerId;
+}
+
 module.exports = {
     addDiskState,
     changeDiskAuthority,
     removeAuthority,
     getDiskStatesFrom,
     getCurrentAuthority,
+    IsAuthority,
     reset
 }

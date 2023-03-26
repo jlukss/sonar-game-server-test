@@ -271,6 +271,7 @@ const createServerMessage = (playerId) => {
     "ServerTime": serverTime,
     "ClientTime": playerInputs.getPlayerLastClientTime(playerId, serverTime),
     "EstimatedGameTick": estimatedGameTime,
+    "IsAuthority": disk.IsAuthority(playerId),
     "GameStatesHistory": gameStatesHistory
   };
 }
