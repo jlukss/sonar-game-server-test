@@ -207,11 +207,11 @@ const processMessage = (data) => {
     if (Math.abs(parseFloat(gameState.deltaTime) - targetDeltaTime) < targetDeltaTime * MAX_DELTA_TIME_DEVIATION) {
       disk.addDiskState(playerId, gameState.gameTimeTick, gameState.diskState);
 
-      Object.keys(gameState.playerStates).forEach(playerId => {
-        let playerState = gameState.playerStates[playerId];
-        playerState.playerPing = serverPing;
-        if (!playerState.bSimulated) {
-          playerInputs.addPlayerState(playerId, gameState.gameTimeTick, playerState);
+      Object.keys(gameState.playerStates).forEach(pid => {
+        let playerState = gameState.playerStates[pid];
+        if (playerId == pid) {
+          playerState.playerPing = serverPing;
+          playerInputs.addPlayerState(pid, gameState.gameTimeTick, playerState);
         }
       });
     } else {
