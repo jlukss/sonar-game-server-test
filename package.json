@@ -2,13 +2,16 @@
     "name": "udp-broadcast-app",
     "version": "1.0.0",
     "description": "A simple Node.js application that receives a UDP data stream and broadcasts it to multiple subscribers using the UDP protocol.",
-    "main": "index.js",
+    "main": "app.js",
     "dependencies": {
-        "uuid": "^9.0.0"
+        "typescript": "^5.0.2"
     },
     "scripts": {
-        "start": "node app.js"
+        "start": "node build/app.js"
     },
     "author": "",
-    "license": "ISC"
+    "license": "ISC",
+    "devDependencies": {
+        "@types/node": "^18.15.10"
+    }
 }
