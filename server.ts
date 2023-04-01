@@ -50,8 +50,8 @@ export const server = {
     
         let estimatedAhead = (serverLastReceivedTick - data.lastReceivedTick) / 2;
         if (data.lastReceivedTick == 0) {
-          estimatedAhead = 0;//Math.round((serverPing / 1000) * global.physicsFrameRate) / 2;
-          console.log("Estimated ahead: " + Math.round((serverPing / 1000) * global.physicsFrameRate) / 2 + " (ping: " + serverPing + "ms)");
+          estimatedAhead = Math.round(((serverPing / 1000) * global.physicsFrameRate) / 2);
+          console.log("Estimated ahead: " + estimatedAhead + " (ping: " + serverPing + "ms)");
         }
     
         data.gameStatesHistory.forEach(gameState => {
