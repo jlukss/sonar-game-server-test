@@ -34,6 +34,7 @@ interface ServerMessage {
     ServerTime: number;
     ClientTime: number;
     EstimatedGameTick: number;
+    AheadTicks: number;
     bIsAuthority: boolean;
     GameStatesHistory: ServerGameState[];
 }
@@ -115,13 +116,15 @@ export const server = {
   
       gameStatesHistory.push(gameState);
     }
-  
-    let estimatedGameTime = global.serverGameTime + playerInputs.getEstimatedTicksAhead(playerId);
+
+    let aheadTicks = playerInputs.getEstimatedTicksAhead(playerId)
+    let estimatedGameTime = global.serverGameTime + aheadTicks;
   
     let serverMessage: ServerMessage = {
         "ServerTime": serverTime,
         "ClientTime": playerInputs.getPlayerLastClientTime(playerId, serverTime),
         "EstimatedGameTick": estimatedGameTime,
+        "AheadTicks": aheadTicks,
         "bIsAuthority": disk.IsAuthority(playerId),
         "GameStatesHistory": gameStatesHistory
     };
