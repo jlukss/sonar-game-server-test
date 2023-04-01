@@ -1,5 +1,27 @@
 const MAX_PING_MEASUREMENTS = 10;
 
+export interface PlayerState {
+    PlayerId: string;
+    bSimulated: boolean;
+    PlayerPing: number;
+    HeadPosition: { X: number, Y: number, Z: number };
+    HeadRotation: { X: number, Y: number, Z: number };
+    BodyPosition: { X: number, Y: number, Z: number };
+    BodyVelocity: { X: number, Y: number, Z: number };
+    BodyRotation: { X: number, Y: number, Z: number };
+    LeftHandPosition: { X: number, Y: number, Z: number };
+    LeftHandRotation: { X: number, Y: number, Z: number };
+    RightHandPosition: { X: number, Y: number, Z: number };
+    RightHandRotation: { X: number, Y: number, Z: number };
+    bLeftAutoGrap: boolean;
+    bRightAutoGrab: boolean;
+    bLeftBoosterActive: boolean;
+    bRightBoosterActive: boolean;
+    bBrakesActive: boolean;
+    bStunned: boolean;
+    StunTime: number;
+}
+
 type PlayerInputsHistory = { [playerId: string]: { [gameTick: number]: any } };
 type LastClientTime = { [playerId: string]: [number, number] };
 type TicksOffsetHistory = { [playerId: string]: number[] };
