@@ -5,8 +5,8 @@ declare global {
   var serverGameTime: number;
 }
 
-global.physicsFrameRate = 72;
-global.gameTicksToKeep = 72;
+global.physicsFrameRate = 120;
+global.gameTicksToKeep = 150;
 global.lastReceivedTick = 0;
 global.serverGameTime = 0;
 
